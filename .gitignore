@@ -1,0 +1,6 @@
+node_modules/
+.env
+.DS_Store
+firebase-key.json
+firebase-debug.log
+server.log

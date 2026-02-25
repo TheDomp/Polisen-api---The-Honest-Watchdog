@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Honest Watchdog — Swedish Police Incident QA</title>
+    <meta name="description"
+        content="Data-driven dashboard for Swedish Police Incidents with real-time integrity scoring and QA validation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="M9 12l2 2 4-4" />
+                </svg>
+            </div>
+            <h1>The Honest Watchdog</h1>
+        </div>
+        <nav class="nav-tabs">
+            <a href="#dashboard" class="nav-tab active" data-page="dashboard">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                </svg>
+                Översikt
+            </a>
+            <a href="#karta" class="nav-tab" data-page="karta">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                </svg>
+                Karta
+            </a>
+            <a href="#statistik" class="nav-tab" data-page="statistik">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 20V10" />
+                    <path d="M12 20V4" />
+                    <path d="M6 20v-6" />
+                </svg>
+                Statistik
+            </a>
+            <a href="#incidenter" class="nav-tab" data-page="incidenter">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <path d="M14 2v6h6" />
+                </svg>
+                Incidenter
+            </a>
+            <a href="#qa-lab" class="nav-tab nav-tab-qa" data-page="qa-lab">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 3h6v2H9zM12 5v5" />
+                    <path d="M5 11h14l-1.5 9H6.5L5 11z" />
+                    <circle cx="8.5" cy="15" r="1.5" />
+                    <circle cx="15.5" cy="15" r="1.5" />
+                </svg>
+                QA Lab
+            </a>
+        </nav>
+        <div class="header-right">
+            <div class="qa-live-badge" id="qaLiveBadge">
+                <span class="pulse-dot"></span>
+                QA LIVE
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content" id="mainContent">
+
+        <!-- PAGE: Översikt -->
+        <div class="page" id="page-dashboard">
+            <section class="stats-comparison">
+                <div class="glass-card stat-card total-card">
+                    <div class="stat-label">Totala Incidenter <span id="timeRangeLabel"
+                            style="font-size:0.75rem; opacity:0.6; font-weight:normal; margin-left:8px;"></span></div>
+                    <div class="stat-number" id="totalCount">—</div>
+                    <div class="stat-sublabel">Polisen.se API</div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar stat-bar-total" id="totalBar"></div>
+                    </div>
+                </div>
+                <div class="vs-divider"><span>VS</span></div>
+                <div class="glass-card stat-card verified-card">
+                    <div class="stat-label">Verifierade Incidenter</div>
+                    <div class="stat-number verified-number" id="verifiedCount">—</div>
+                    <div class="stat-sublabel">Integrity Score ≥ 50</div>
+                    <div class="stat-bar-track">
+                        <div class="stat-bar stat-bar-verified" id="verifiedBar"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card score-distribution-card">
+                <h2>Integritetspoäng</h2>
+                <div class="score-bars">
+                    <div class="score-range"><span class="range-label">0–24</span>
+                        <div class="range-bar-track">
+                            <div class="range-bar range-critical" id="bar0"></div>
+                        </div><span class="range-count" id="count0">0</span>
+                    </div>
+                    <div class="score-range"><span class="range-label">25–49</span>
+                        <div class="range-bar-track">
+                            <div class="range-bar range-low" id="bar25"></div>
+                        </div><span class="range-count" id="count25">0</span>
+                    </div>
+                    <div class="score-range"><span class="range-label">50–74</span>
+                        <div class="range-bar-track">
+                            <div class="range-bar range-medium" id="bar50"></div>
+                        </div><span class="range-count" id="count50">0</span>
+                    </div>
+                    <div class="score-range"><span class="range-label">75–100</span>
+                        <div class="range-bar-track">
+                            <div class="range-bar range-high" id="bar75"></div>
+                        </div><span class="range-count" id="count75">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card mini-map-card" onclick="navigateTo('karta')">
+                <div class="panel-header">
+                    <h2>🗺️ Incidentkarta</h2>
+                    <span class="view-more">Visa fullskärm →</span>
+                </div>
+                <div id="miniMap"></div>
+            </section>
+        </div>
+
+        <!-- PAGE: Karta -->
+        <div class="page hidden" id="page-karta">
+            <section class="glass-card map-section-full">
+                <div class="panel-header">
+                    <h2>🗺️ Incidentkarta — Sverige</h2>
+                    <div class="filter-pills">
+                        <button class="pill active" onclick="setMapFilter('all', this)">Alla</button>
+                        <button class="pill" onclick="setMapFilter('verified', this)">Verifierade</button>
+                        <button class="pill" onclick="setMapFilter('flagged', this)">Flaggade</button>
+                    </div>
+                </div>
+                <div id="fullMap"></div>
+                <div class="map-legend">
+                    <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Trafik</span>
+                    <span class="legend-item"><span class="legend-dot"
+                            style="background:#ef4444"></span>Misshandel</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Stöld</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Brand</span>
+                    <span class="legend-item"><span class="legend-dot"
+                            style="background:#f97316"></span>Rattfylleri</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span>Kontroll</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Övrigt</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- PAGE: Statistik -->
+        <div class="page hidden" id="page-statistik">
+            <section class="stats-grid">
+                <div class="glass-card stats-panel crime-panel">
+                    <div class="panel-header">
+                        <h2>📊 Brottstyper</h2>
+                    </div>
+                    <div class="crime-type-list" id="crimeTypeList"></div>
+                </div>
+                <div class="glass-card stats-panel time-panel">
+                    <div class="panel-header">
+                        <h2>⏰ Tidsmönster (24h) <span style="font-size:0.9rem; font-weight:normal; opacity:0.7">(Senaste
+                                500 händelserna)</span></h2>
+                    </div>
+                    <div class="time-chart" id="timeChart"></div>
+                    <p class="chart-note" id="timeChartNote"></p>
+                    <div
+                        style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 10px; padding: 0 10px;">
+                        <em>💡 Graferna fylls på allt eftersom databasen samlar historik upp till 7 dagar. Tomma
+                            timmar/dagar innebär antingen inga händelser eller att databasen just startats.</em>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-grid" style="margin-top: 20px;">
+                <div class="glass-card stats-panel time-panel">
+                    <div class="panel-header">
+                        <h2>📅 Incidenter per Veckodag <span
+                                style="font-size:0.9rem; font-weight:normal; opacity:0.7"></span></h2>
+                    </div>
+                    <div class="time-chart" id="dayChart"></div>
+                </div>
+                <div class="glass-card stats-panel region-panel">
+                    <div class="panel-header" title="Visar vilka län som har allra högst snittpoäng i Honesty Engine">
+                        <h2>🛡️ Kvalitetsligan (Bäst rapportering) <span
+                                style="font-size:0.9rem; font-weight:normal; opacity:0.7"></span></h2>
+                    </div>
+                    <div class="region-list" id="integrityRegionList" style="max-height: 250px;"></div>
+                </div>
+            </section>
+
+            <section class="glass-card stats-panel region-full-panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <h2>🏙️ Incidenter per Län <span style="font-size:0.9rem; font-weight:normal; opacity:0.7">(Senaste
+                            500 händelserna)</span></h2>
+                </div>
+                <div class="region-list" id="regionList"></div>
+            </section>
+        </div>
+
+        <!-- PAGE: Incidenter -->
+        <div class="page hidden" id="page-incidenter">
+            <section class="glass-card incidents-full-panel">
+                <div class="panel-header">
+                    <h2>Alla Incidenter<span id="incidentRegionSubHeader"
+                            style="opacity:0.8; font-weight:normal;"></span></h2>
+                    <div class="filter-pills">
+                        <button class="pill active" data-filter="all"
+                            onclick="filterIncidents('all', this)">Alla</button>
+                        <button class="pill" data-filter="verified"
+                            onclick="filterIncidents('verified', this)">Verifierade</button>
+                        <button class="pill" data-filter="flagged"
+                            onclick="filterIncidents('flagged', this)">Flaggade</button>
+                    </div>
+                </div>
+                <div class="incident-list" id="incidentList">
+                    <div class="loading-skeleton">
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- PAGE: QA Lab -->
+        <div class="page hidden" id="page-qa-lab">
+            <!-- Hero Section -->
+            <section class="glass-card qa-hero">
+                <div class="qa-hero-badge">🧪 Quality Assurance Laboratory</div>
+                <h2>Testa dataintegritet i realtid</h2>
+                <p>Den här sidan visar hur vi säkerställer att polisdatan vi visar är pålitlig. Varje incident
+                    poängsätts av vår <strong>Honesty Engine</strong> — och här kan du testa vad som händer
+                    när felaktig data kommer in i systemet.</p>
+            </section>
+
+            <!-- What We Validate -->
+            <section class="qa-section">
+                <h3 class="qa-section-title">🔍 Vad validerar vi?</h3>
+                <p class="qa-section-desc">Varje incident från Polisens API genomgår fyra kontroller. Här kan du se
+                    exakt vad vi letar efter:</p>
+                <div class="qa-checks-grid">
+                    <div class="glass-card qa-check-card">
+                        <div class="qa-check-icon">📍</div>
+                        <h4>GPS-koordinater</h4>
+                        <div class="qa-check-points">30 poäng</div>
+                        <p>Har incidenten giltiga GPS-koordinater? Utan dem kan vi inte placera den på kartan eller
+                            verifiera att platsen stämmer.</p>
+                    </div>
+                    <div class="glass-card qa-check-card">
+                        <div class="qa-check-icon">📝</div>
+                        <h4>Beskrivningskvalitet</h4>
+                        <div class="qa-check-points">30 poäng</div>
+                        <p>Hur lång och detaljerad är beskrivningen? En incident utan text ger medborgare ingen
+                            användbar information.</p>
+                    </div>
+                    <div class="glass-card qa-check-card">
+                        <div class="qa-check-icon">⏰</div>
+                        <h4>Logisk tidsstämpel</h4>
+                        <div class="qa-check-points">20 poäng</div>
+                        <p>Är datumet rimligt? Vi kontrollerar att det inte är i framtiden och inte försenat med mer än
+                            30 dagar.</p>
+                    </div>
+                    <div class="glass-card qa-check-card">
+                        <div class="qa-check-icon">🏷️</div>
+                        <h4>Plats-taggning</h4>
+                        <div class="qa-check-points">20 poäng</div>
+                        <p>Är incidenten kopplad till ett län/kommun? Utan det kan vi inte visa den i regional
+                            statistik.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Test Approaches -->
+            <section class="qa-section">
+                <h3 class="qa-section-title">🤖 Hur testar vi?</h3>
+                <p class="qa-section-desc">Vi använder tre nivåer av testning för att säkerställa att dashboarden aldrig
+                    visar missvisande data:</p>
+                <div class="qa-approaches-grid">
+                    <div class="glass-card qa-approach-card approach-manual">
+                        <div class="approach-header">
+                            <span class="approach-badge badge-manual">Manuell</span>
+                            <h4>Sandbox-testning</h4>
+                        </div>
+                        <p>Du kan själv injicera korrupt testdata och se hur systemet reagerar. Testa med GPS-fel,
+                            framtida datum, eller helt tom data.</p>
+                        <div class="approach-status">
+                            <span class="status-dot status-active"></span>
+                            Tillgänglig nedan ↓
+                        </div>
+                    </div>
+                    <div class="glass-card qa-approach-card approach-genai">
+                        <div class="approach-header">
+                            <span class="approach-badge badge-genai">Gen AI</span>
+                            <h4>AI-genererad testdata</h4>
+                        </div>
+                        <p>En AI-modell genererar realistisk men felaktig polisdata — med subtilare fel som svenska
+                            tecken i koordinater, felstavade kommuner, eller orimliga beskrivningar.</p>
+                        <div class="approach-status">
+                            <span class="status-dot status-active"></span>
+                            Implementerad i presets
+                        </div>
+                    </div>
+                    <div class="glass-card qa-approach-card approach-agentic">
+                        <div class="approach-header">
+                            <span class="approach-badge badge-agentic">Agentic AI</span>
+                            <h4>Autonom AI-testare</h4>
+                        </div>
+                        <p>En AI-agent navigerar hela dashboarden autonomt — injicerar data, verifierar att UI:t inte
+                            kraschar, kontrollerar att poängen reagerar rätt, och rapporterar resultatet.</p>
+                        <div class="approach-status">
+                            <span class="status-dot status-ready"></span>
+                            API redo — /api/test-sandbox/inject
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sandbox -->
+            <section class="qa-section">
+                <h3 class="qa-section-title">🧪 Testlabb — Injicera & Observera</h3>
+                <p class="qa-section-desc">Klicka på en testprofil nedan. Datan skickas till vår Honesty Engine och
+                    resultatet visas direkt — utan att påverka den riktiga dashboarden.</p>
+                <div class="qa-sandbox-grid">
+                    <div class="qa-presets">
+                        <button class="qa-preset-btn" onclick="injectPreset('missing_gps')">
+                            <span class="preset-icon">📍</span>
+                            <div class="preset-info">
+                                <strong>Ingen GPS</strong>
+                                <span>Testar: Saknade koordinater</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: ~55p</span>
+                        </button>
+                        <button class="qa-preset-btn" onclick="injectPreset('future_date')">
+                            <span class="preset-icon">⏰</span>
+                            <div class="preset-info">
+                                <strong>Framtida datum</strong>
+                                <span>Testar: Datum 2030-12-31</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: ~65p</span>
+                        </button>
+                        <button class="qa-preset-btn" onclick="injectPreset('empty_text')">
+                            <span class="preset-icon">📝</span>
+                            <div class="preset-info">
+                                <strong>Tom beskrivning</strong>
+                                <span>Testar: Helt tom summary + description</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: ~70p</span>
+                        </button>
+                        <button class="qa-preset-btn" onclick="injectPreset('swedish_in_gps')">
+                            <span class="preset-icon">🇸🇪</span>
+                            <div class="preset-info">
+                                <strong>Svenska i GPS</strong>
+                                <span>Testar: ÅÄÖ i koordinater</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: ~55p</span>
+                        </button>
+                        <button class="qa-preset-btn preset-success" onclick="injectPreset('perfect')">
+                            <span class="preset-icon">✅</span>
+                            <div class="preset-info">
+                                <strong>Perfekt data</strong>
+                                <span>Kontroll: Alla fält korrekta</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: 100p</span>
+                        </button>
+                        <button class="qa-preset-btn preset-danger" onclick="injectPreset('total_garbage')">
+                            <span class="preset-icon">🗑️</span>
+                            <div class="preset-info">
+                                <strong>Total skräpdata</strong>
+                                <span>Testar: Alla fält trasiga</span>
+                            </div>
+                            <span class="preset-expected">Förväntad: 0p</span>
+                        </button>
+                    </div>
+                    <div class="qa-results-panel glass-card">
+                        <h4>Testresultat</h4>
+                        <div class="qa-results-list" id="qaResultsList">
+                            <div class="qa-empty-state">
+                                <div class="qa-empty-icon">🔬</div>
+                                <p>Klicka på en testprofil till vänster för att se resultatet här.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QA Live Feed -->
+            <section class="glass-card qa-feed-panel">
+                <div class="panel-header">
+                    <h2>📡 QA Live Feed</h2>
+                    <span class="feed-count" id="feedCount">0 loggar</span>
+                </div>
+                <div class="qa-feed" id="qaFeed"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Honesty Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal glass-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-header">
+                <div class="modal-score-ring">
+                    <svg viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="52" class="ring-bg" />
+                        <circle cx="60" cy="60" r="52" class="ring-progress" id="modalRingProgress" />
+                    </svg>
+                    <span class="ring-text" id="modalScoreText">0</span>
+                </div>
+                <div class="modal-title-area">
+                    <h3 id="modalTitle">Incident</h3>
+                    <p class="modal-type" id="modalType">Typ</p>
+                    <p class="modal-location" id="modalLocation">Plats</p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h4>Beskrivning</h4>
+                    <p id="modalDescription">—</p>
+                </div>
+                <div class="modal-section">
+                    <h4>Integritetsanalys</h4>
+                    <div class="integrity-breakdown" id="integrityBreakdown"></div>
+                </div>
+                <div class="modal-section" id="flagReasonsSection" style="display:none">
+                    <h4>⚠️ Flaggade problem</h4>
+                    <ul class="flag-reasons" id="flagReasonsList"></ul>
+                </div>
+                <a class="modal-link" id="modalLink" href="#" target="_blank" rel="noopener">
+                    Läs mer på Polisen.se →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="sandbox-toast" id="sandboxToast">
+        <div class="toast-icon" id="toastIcon">🧪</div>
+        <div class="toast-content">
+            <div class="toast-title" id="toastTitle">Testdata injicerad</div>
+            <div class="toast-detail" id="toastDetail">Score: 30/100</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
