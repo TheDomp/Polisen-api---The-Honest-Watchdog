@@ -96,7 +96,7 @@ async function upsertEvents(rawEvents) {
     for (const event of rawEvents) {
         const integrity = calculateIntegrityScore(event);
         let dateStr = event.datetime || '';
-        dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{2}):(\d{2})$/, '$1T$2$3:$4');
+        dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{2}):(\d{2})$/, (_, d, h, m, s, oh, om) => `${d}T${h.padStart(2, '0')}:${m}:${s}${oh}:${om}`);
         const eventTime = new Date(dateStr).getTime() || Date.now();
 
         const enriched = {
@@ -227,7 +227,7 @@ app.post('/api/test-sandbox/inject', async (req, res) => {
         const corruptData = req.body;
         const integrity = calculateIntegrityScore(corruptData);
         let dateStr = corruptData.datetime || '';
-        dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{2}):(\d{2})$/, '$1T$2$3:$4');
+        dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{2}):(\d{2})$/, (_, d, h, m, s, oh, om) => `${d}T${h.padStart(2, '0')}:${m}:${s}${oh}:${om}`);
         const eventTime = new Date(dateStr).getTime() || Date.now();
 
         const enrichedData = {

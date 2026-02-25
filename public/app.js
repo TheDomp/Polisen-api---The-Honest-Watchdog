@@ -53,7 +53,7 @@ function navigateTo(page, updateHash = true) {
 // ─── PARSE DATETIME ─────────────────────────
 function parsePoliceDate(str) {
     if (!str) return null;
-    const fixed = str.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{2}):(\d{2})$/, '$1T$2$3:$4');
+    const fixed = str.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{2}):(\d{2})$/, (_, d, h, m, s, oh, om) => `${d}T${h.padStart(2, '0')}:${m}:${s}${oh}:${om}`);
     const d = new Date(fixed);
     return isNaN(d.getTime()) ? null : d;
 }
