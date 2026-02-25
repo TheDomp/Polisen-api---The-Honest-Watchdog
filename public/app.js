@@ -2,7 +2,7 @@
    THE HONEST WATCHDOG — Frontend Logic (SPA)
    ============================================ */
 
-const API_BASE = window.location.origin;
+const API_BASE = 'https://polisen-api-the-honest-watchdog.onrender.com';
 
 let allIncidents = [];
 let qaLogs = [];
