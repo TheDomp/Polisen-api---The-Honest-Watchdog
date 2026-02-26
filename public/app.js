@@ -154,7 +154,11 @@ function updateTimeRangeInfo() {
     // Uppdatera de andra rubrikerna som vi förut hårdkodade till "Senaste 500 händelserna"
     document.querySelectorAll('.panel-header h2 span').forEach(el => {
         if (el.innerText.includes('Senaste')) {
-            el.innerText = `(Senaste ${daysDiff} dagarna)`;
+            if (el.id === 'timeChartRangeLabel') {
+                el.innerText = `(Totalt per timme, senaste ${daysDiff} dagarna)`;
+            } else {
+                el.innerText = `(Senaste ${daysDiff} dagarna)`;
+            }
         }
     });
 }
@@ -470,8 +474,19 @@ function updateCrimeTypes() {
 function updateTimePattern() {
     const hours = new Array(24).fill(0);
     allIncidents.filter(i => !i.isMockedData).forEach(inc => {
-        const d = parsePoliceDate(inc.datetime);
-        if (d) hours[d.getHours()]++;
+        // Hämta incidentens faktiska tid från name-fältet (t.ex. "25 februari 15.00, Brand")
+        // Polisen använder punkt som separator: "HH.MM" (ibland ensiffrig timme)
+        const name = inc.name || '';
+        const timeMatch = name.match(/\b(\d{1,2})\.(\d{2})\b/);
+
+        if (timeMatch) {
+            const hour = parseInt(timeMatch[1], 10);
+            hours[hour]++;
+        } else {
+            // Fallback om tiden saknas i titeln (använder publiceringstiden)
+            const d = parsePoliceDate(inc.datetime);
+            if (d) hours[d.getHours()]++;
+        }
     });
 
     const max = Math.max(...hours, 1);
@@ -489,7 +504,7 @@ function updateTimePattern() {
         const g = Math.round(130 - intensity * 60);
         const b = Math.round(246 - intensity * 100);
         const color = `rgb(${r},${g},${b})`;
-        const label = h % 3 === 0 ? h.toString().padStart(2, '0') : '';
+        const label = h % 3 === 0 ? h.toString().padStart(2, '0') : '&nbsp;';
 
         return `
             <div class="time-bar-wrap">
