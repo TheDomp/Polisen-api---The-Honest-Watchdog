@@ -287,6 +287,25 @@ function addQALog(type, message) {
     const item = document.createElement('div');
     item.className = `feed-item feed-${type}`;
     item.innerHTML = `<span class="feed-icon">${iconMap[type] || 'ℹ️'}</span><span class="feed-text">${escapeHtml(message)}</span><span class="feed-time">${timeStr}</span>`;
+
+    // Gör loggar klickbara om vi kan hitta en matchande incident (t.ex "#12345" eller Sandbox "QA Test")
+    const matchId = message.match(/#(\d+)/);
+    const matchSandbox = message.match(/QA Test: "(.+?)"/);
+    if (matchId || matchSandbox) {
+        item.classList.add('clickable');
+        item.onclick = function () {
+            let inc = null;
+            if (matchId) inc = allIncidents.find(i => String(i.id) === matchId[1]);
+            if (matchSandbox) inc = allIncidents.find(i => i._testLabel === matchSandbox[1] || i.name === matchSandbox[1] || i.name === 'TestEvent - ' + matchSandbox[1]);
+            if (inc) openIncidentModal(inc);
+            else if (matchId) {
+                // Fallback (i fall index !== id under laddningens start)
+                const nr = parseInt(matchId[1], 10);
+                if (nr < allIncidents.length && allIncidents[nr]) openIncidentModal(allIncidents[nr]);
+            }
+        };
+    }
+
     feed.prepend(item);
     while (feed.children.length > 50) feed.removeChild(feed.lastChild);
     const countEl = document.getElementById('feedCount');

@@ -703,6 +703,16 @@ body {
     font-size: 0.78rem;
     animation: slideIn 0.4s ease-out;
     background: rgba(255, 255, 255, 0.02);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.feed-item.clickable {
+    cursor: pointer;
+}
+
+.feed-item.clickable:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(4px);
 }
 
 .feed-item.feed-verified {
@@ -1628,9 +1638,9 @@ body {
 }
 
 .qa-presets {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
 
 .qa-preset-btn {
