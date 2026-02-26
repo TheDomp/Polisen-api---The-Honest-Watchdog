@@ -249,159 +249,74 @@
         <div class="page hidden" id="page-qa-lab">
             <!-- Hero Section -->
             <section class="glass-card qa-hero">
-                <div class="qa-hero-badge">🧪 Quality Assurance Laboratory</div>
-                <h2>Testa dataintegritet i realtid</h2>
-                <p>Den här sidan visar hur vi säkerställer att polisdatan vi visar är pålitlig. Varje incident
-                    poängsätts av vår <strong>Honesty Engine</strong> — och här kan du testa vad som händer
-                    när felaktig data kommer in i systemet.</p>
+                <div class="qa-hero-badge">🛡️ AI Watchdog Simulator</div>
+                <h2>Kan du se felen innan AI:n fixar dem?</h2>
+                <p>Nedan kan du <strong>simulera vanliga datafel</strong> som smyger sig in i polisens öppna data.
+                    Först visas den <em>trasiga</em> incidenten — med tydliga markeringar som visar vad som är fel.
+                    Sedan aktiverar du <strong>Watchdog-AI</strong> som rättar felen automatiskt, i realtid.</p>
             </section>
 
-            <!-- What We Validate -->
+            <!-- Scenario Selector -->
             <section class="qa-section">
-                <h3 class="qa-section-title">🔍 Vad validerar vi?</h3>
-                <p class="qa-section-desc">Varje incident från Polisens API genomgår fyra kontroller. Här kan du se
-                    exakt vad vi letar efter:</p>
-                <div class="qa-checks-grid">
-                    <div class="glass-card qa-check-card">
-                        <div class="qa-check-icon">📍</div>
-                        <h4>GPS-koordinater</h4>
-                        <div class="qa-check-points">30 poäng</div>
-                        <p>Har incidenten giltiga GPS-koordinater? Utan dem kan vi inte placera den på kartan eller
-                            verifiera att platsen stämmer.</p>
-                    </div>
-                    <div class="glass-card qa-check-card">
-                        <div class="qa-check-icon">📝</div>
-                        <h4>Beskrivningskvalitet</h4>
-                        <div class="qa-check-points">30 poäng</div>
-                        <p>Hur lång och detaljerad är beskrivningen? En incident utan text ger medborgare ingen
-                            användbar information.</p>
-                    </div>
-                    <div class="glass-card qa-check-card">
-                        <div class="qa-check-icon">⏰</div>
-                        <h4>Logisk tidsstämpel</h4>
-                        <div class="qa-check-points">20 poäng</div>
-                        <p>Är datumet rimligt? Vi kontrollerar att det inte är i framtiden och inte försenat med mer än
-                            30 dagar.</p>
-                    </div>
-                    <div class="glass-card qa-check-card">
-                        <div class="qa-check-icon">🏷️</div>
-                        <h4>Plats-taggning</h4>
-                        <div class="qa-check-points">20 poäng</div>
-                        <p>Är incidenten kopplad till ett län/kommun? Utan det kan vi inte visa den i regional
-                            statistik.</p>
-                    </div>
-                </div>
+                <h3 class="qa-section-title">💥 Välj ett scenario</h3>
+                <p class="qa-section-desc">Varje scenario representerar ett verkligt datafel som kan dyka upp i polisens
+                    system. Klicka för att se felet — och sedan låta AI:n laga det.</p>
+                <div class="chaos-scenarios" id="chaosScenarios"></div>
             </section>
 
-            <!-- Test Approaches -->
-            <section class="qa-section">
-                <h3 class="qa-section-title">🤖 Hur testar vi?</h3>
-                <p class="qa-section-desc">Vi använder tre nivåer av testning för att säkerställa att dashboarden aldrig
-                    visar missvisande data:</p>
-                <div class="qa-approaches-grid">
-                    <div class="glass-card qa-approach-card approach-manual">
-                        <div class="approach-header">
-                            <span class="approach-badge badge-manual">Manuell</span>
-                            <h4>Sandbox-testning</h4>
-                        </div>
-                        <p>Du kan själv injicera korrupt testdata och se hur systemet reagerar. Testa med GPS-fel,
-                            framtida datum, eller helt tom data.</p>
-                        <div class="approach-status">
-                            <span class="status-dot status-active"></span>
-                            Tillgänglig nedan ↓
-                        </div>
+            <!-- Incident Viewer -->
+            <section class="qa-section" id="chaosViewerSection" style="display:none;">
+                <div class="chaos-viewer glass-card" id="chaosViewer">
+                    <!-- Phase indicator -->
+                    <div class="chaos-phase" id="chaosPhase">
+                        <span class="phase-badge phase-broken" id="phaseBadge">⚠️ Trasig data inmatad</span>
                     </div>
-                    <div class="glass-card qa-approach-card approach-genai">
-                        <div class="approach-header">
-                            <span class="approach-badge badge-genai">Gen AI</span>
-                            <h4>AI-genererad testdata</h4>
-                        </div>
-                        <p>En AI-modell genererar realistisk men felaktig polisdata — med subtilare fel som svenska
-                            tecken i koordinater, felstavade kommuner, eller orimliga beskrivningar.</p>
-                        <div class="approach-status">
-                            <span class="status-dot status-active"></span>
-                            Implementerad i presets
-                        </div>
-                    </div>
-                    <div class="glass-card qa-approach-card approach-agentic">
-                        <div class="approach-header">
-                            <span class="approach-badge badge-agentic">Agentic AI</span>
-                            <h4>Autonom AI-testare</h4>
-                        </div>
-                        <p>En AI-agent navigerar hela dashboarden autonomt — injicerar data, verifierar att UI:t inte
-                            kraschar, kontrollerar att poängen reagerar rätt, och rapporterar resultatet.</p>
-                        <div class="approach-status">
-                            <span class="status-dot status-ready"></span>
-                            API redo — /api/test-sandbox/inject
-                        </div>
-                    </div>
-                </div>
-            </section>
 
-            <!-- Sandbox -->
-            <section class="qa-section">
-                <h3 class="qa-section-title">🧪 Testlabb — Injicera & Observera</h3>
-                <p class="qa-section-desc">Klicka på en testprofil nedan. Datan skickas till vår Honesty Engine och
-                    resultatet visas direkt — utan att påverka den riktiga dashboarden.</p>
-                <div class="qa-sandbox-grid">
-                    <div class="qa-presets">
-                        <button class="qa-preset-btn" onclick="injectPreset('missing_gps')">
-                            <span class="preset-icon">📍</span>
-                            <div class="preset-info">
-                                <strong>Ingen GPS</strong>
-                                <span>Testar: Saknade koordinater</span>
+                    <!-- Incident card -->
+                    <div class="chaos-incident" id="chaosIncident">
+                        <div class="chaos-field" id="chaosFieldType">
+                            <span class="chaos-label">Typ</span>
+                            <span class="chaos-value" id="chaosType"></span>
+                        </div>
+                        <div class="chaos-field" id="chaosFieldLocation">
+                            <span class="chaos-label">Plats</span>
+                            <span class="chaos-value" id="chaosLocation"></span>
+                        </div>
+                        <div class="chaos-field" id="chaosFieldGps">
+                            <span class="chaos-label">GPS</span>
+                            <span class="chaos-value" id="chaosGps"></span>
+                        </div>
+                        <div class="chaos-field" id="chaosFieldDatetime">
+                            <span class="chaos-label">Tidpunkt</span>
+                            <span class="chaos-value" id="chaosDatetime"></span>
+                        </div>
+                        <div class="chaos-field chaos-field-wide" id="chaosFieldSummary">
+                            <span class="chaos-label">Sammanfattning</span>
+                            <span class="chaos-value" id="chaosSummary"></span>
+                        </div>
+                    </div>
+
+                    <!-- Error explanations (shown in broken state) -->
+                    <div class="chaos-errors" id="chaosErrors"></div>
+
+                    <!-- Fix button -->
+                    <div class="chaos-actions" id="chaosActions">
+                        <button class="chaos-fix-btn" id="chaosFixBtn" onclick="chaosRunFix()">
+                            <span class="fix-icon">🪄</span>
+                            <div class="fix-text">
+                                <strong>Aktivera Watchdog-AI</strong>
+                                <span>Låt AI:n hitta och laga alla fel</span>
                             </div>
-                            <span class="preset-expected">Förväntad: ~55p</span>
-                        </button>
-                        <button class="qa-preset-btn" onclick="injectPreset('future_date')">
-                            <span class="preset-icon">⏰</span>
-                            <div class="preset-info">
-                                <strong>Framtida datum</strong>
-                                <span>Testar: Datum 2030-12-31</span>
-                            </div>
-                            <span class="preset-expected">Förväntad: ~65p</span>
-                        </button>
-                        <button class="qa-preset-btn" onclick="injectPreset('empty_text')">
-                            <span class="preset-icon">📝</span>
-                            <div class="preset-info">
-                                <strong>Tom beskrivning</strong>
-                                <span>Testar: Helt tom summary + description</span>
-                            </div>
-                            <span class="preset-expected">Förväntad: ~70p</span>
-                        </button>
-                        <button class="qa-preset-btn" onclick="injectPreset('swedish_in_gps')">
-                            <span class="preset-icon">🇸🇪</span>
-                            <div class="preset-info">
-                                <strong>Svenska i GPS</strong>
-                                <span>Testar: ÅÄÖ i koordinater</span>
-                            </div>
-                            <span class="preset-expected">Förväntad: ~55p</span>
-                        </button>
-                        <button class="qa-preset-btn preset-success" onclick="injectPreset('perfect')">
-                            <span class="preset-icon">✅</span>
-                            <div class="preset-info">
-                                <strong>Perfekt data</strong>
-                                <span>Kontroll: Alla fält korrekta</span>
-                            </div>
-                            <span class="preset-expected">Förväntad: 100p</span>
-                        </button>
-                        <button class="qa-preset-btn preset-danger" onclick="injectPreset('total_garbage')">
-                            <span class="preset-icon">🗑️</span>
-                            <div class="preset-info">
-                                <strong>Total skräpdata</strong>
-                                <span>Testar: Alla fält trasiga</span>
-                            </div>
-                            <span class="preset-expected">Förväntad: 0p</span>
                         </button>
                     </div>
-                    <div class="qa-results-panel glass-card">
-                        <h4>Testresultat</h4>
-                        <div class="qa-results-list" id="qaResultsList">
-                            <div class="qa-empty-state">
-                                <div class="qa-empty-icon">🔬</div>
-                                <p>Klicka på en testprofil till vänster för att se resultatet här.</p>
-                            </div>
+
+                    <!-- Fix explanation (shown after fix) -->
+                    <div class="chaos-fix-result" id="chaosFixResult" style="display:none;">
+                        <div class="fix-result-header">
+                            <span class="fix-result-icon">✅</span>
+                            <strong>Watchdog-AI har lagat felen!</strong>
                         </div>
+                        <p id="chaosFixExplanation"></p>
                     </div>
                 </div>
             </section>

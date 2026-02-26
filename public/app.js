@@ -658,180 +658,303 @@ function updateRegions() {
 }
 
 // ═══════════════════════════════════════════
-//  QA LAB — Sandbox Testing
+//  QA LAB — AI Auto-Fix Simulator
 // ═══════════════════════════════════════════
 
-const SANDBOX_PRESETS = {
-    missing_gps: {
-        id: 99901, datetime: new Date().toISOString(),
-        name: 'TestEvent - Ingen GPS', type: 'Stöld',
-        summary: 'En misstänkt stöld rapporterades i centrala Stockholm, men inga koordinater angavs.',
-        description: 'Polisen fick in en anmälan om stöld. Gärningsmannen är okänd. Ärendet utreds vidare.',
-        location: { name: 'Stockholm', gps: '' },
-        _testLabel: 'Ingen GPS', _testCategory: 'GPS-koordinater',
-        _explains: 'Incidenten saknar GPS-koordinater helt, vilket ger 0 av 30 möjliga GPS-poäng.'
+const CHAOS_SCENARIOS = [
+    {
+        id: 'north_pole_gps',
+        icon: '🧊',
+        title: 'GPS pekar på Nordpolen',
+        subtitle: 'Koordinaterna hamnade i Arktis',
+        broken: {
+            type: 'Rån',
+            location: 'Stockholm',
+            gps: '90.0000, 0.0000',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'Ett rån begicks mot en butik på Drottninggatan i centrala Stockholm. Gärningsmannen hotade personalen med kniv och flydde med kontanter söderut.'
+        },
+        fixed: {
+            type: 'Rån',
+            location: 'Stockholm',
+            gps: '59.3326, 18.0649',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'Ett rån begicks mot en butik på Drottninggatan i centrala Stockholm. Gärningsmannen hotade personalen med kniv och flydde med kontanter söderut.'
+        },
+        errors: [
+            { field: 'gps', explanation: 'GPS visar 90.0, 0.0 — det är Nordpolen! Texten säger "Drottninggatan i centrala Stockholm".' }
+        ],
+        fixExplanation: 'Watchdog-AI läste sammanfattningen, hittade "Drottninggatan i centrala Stockholm", och ersatte Nordpolens koordinater (90.0, 0.0) med Stockholms centrum (59.33, 18.06). Nu pekar kartan rätt.'
     },
-    future_date: {
-        id: 99902, datetime: '2030-12-31T23:59:00+0100',
-        name: 'TestEvent - Framtida datum', type: 'Trafikolycka',
-        summary: 'Trafikolycka med framtida datum för att testa tidsstämpelvalidering.',
-        description: 'Incidenten har ett datum satt i framtiden, 2030-12-31.',
-        location: { name: 'Göteborg', gps: '57.7089,11.9746' },
-        _testLabel: 'Ologisk tidsstämpel', _testCategory: 'Tidsstämpel',
-        _explains: 'Incidenten testas med ett datum långt in i framtiden (här 2030-12-31). Systemet upptäcker logikfelet och ger 0 av 20 tidsstämpelpoäng.'
+    {
+        id: 'future_date',
+        icon: '⏰',
+        title: 'Händelse från framtiden',
+        subtitle: 'Tidsstämpeln pekar på år 2030',
+        broken: {
+            type: 'Trafikolycka',
+            location: 'Göteborg, Västra Götalands län',
+            gps: '57.7089, 11.9746',
+            datetime: '2030-12-31 23:59:00',
+            summary: 'En trafikolycka inträffade på E6 i höjd med Tingstadstunneln. Två personbilar var inblandade. Inga allvarliga personskador.'
+        },
+        fixed: {
+            type: 'Trafikolycka',
+            location: 'Göteborg, Västra Götalands län',
+            gps: '57.7089, 11.9746',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En trafikolycka inträffade på E6 i höjd med Tingstadstunneln. Två personbilar var inblandade. Inga allvarliga personskador.'
+        },
+        errors: [
+            { field: 'datetime', explanation: 'Datumet "2030-12-31" ligger nästan 5 år i framtiden. Incidenter kan inte ha skett i framtiden.' }
+        ],
+        fixExplanation: 'Watchdog-AI upptäckte att tidsstämpeln låg i framtiden (år 2030) och ersatte den med dagens datum och tid. Övrig data var korrekt.'
     },
-    empty_text: {
-        id: 99903, datetime: new Date().toISOString(),
-        name: 'TestEvent - Tom text', type: 'Brand',
-        summary: '', description: '',
-        location: { name: 'Malmö', gps: '55.6049,13.0038' },
-        _testLabel: 'Tom beskrivning', _testCategory: 'Beskrivningskvalitet',
-        _explains: 'Helt tom sammanfattning och beskrivning — systemet ger 0 av 30 textpoäng.'
+    {
+        id: 'empty_description',
+        icon: '📝',
+        title: 'Helt tom beskrivning',
+        subtitle: 'Bara brottstypen finns — inget annat',
+        broken: {
+            type: 'Brand',
+            location: 'Malmö, Skåne län',
+            gps: '55.6049, 13.0038',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: ''
+        },
+        fixed: {
+            type: 'Brand',
+            location: 'Malmö, Skåne län',
+            gps: '55.6049, 13.0038',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En brand har rapporterats i Malmö, Skåne län. Ytterligare detaljer saknas ännu. Kontakta polisen på 114 14 för mer information.'
+        },
+        errors: [
+            { field: 'summary', explanation: 'Sammanfattningen är helt tom! Allmänheten får ingen information alls om vad som har hänt.' }
+        ],
+        fixExplanation: 'Watchdog-AI såg att beskrivningen var helt tom. Baserat på brottstypen (Brand) och platsen (Malmö) genererades en grundläggande sammanfattning så att medborgarna åtminstone vet att något har hänt.'
     },
-    swedish_in_gps: {
-        id: 99904, datetime: new Date().toISOString(),
-        name: 'TestEvent - Svenska i GPS', type: 'Misshandel',
-        summary: 'GPS som innehåller svenska tecken (ÅÄÖ) för att testa sanering.',
-        description: 'GPS: 59.ÅÄÖ,18.ÖÄÅ — bör inte kunna parsas till giltiga koordinater.',
-        location: { name: 'Uppsala', gps: '59.ÅÄÖ,18.ÖÄÅ' },
-        _testLabel: 'Svenska i GPS', _testCategory: 'GPS-koordinater + Gen AI',
-        _explains: 'AI-genererat test: GPS med svenska tecken (ÅÄÖ) istället för siffror. Systemet ger 0 GPS-poäng.'
+    {
+        id: 'swedish_gps',
+        icon: '🇸🇪',
+        title: 'Svenska tecken i GPS',
+        subtitle: 'ÅÄÖ istället för siffror i koordinaterna',
+        broken: {
+            type: 'Misshandel',
+            location: 'Uppsala',
+            gps: '59.ÅÄÖ, 18.ÖÄÅ',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En man misshandlades utanför en restaurang på Dragarbrunnsgatan i Uppsala under natten. Vittnen har hörts.'
+        },
+        fixed: {
+            type: 'Misshandel',
+            location: 'Uppsala',
+            gps: '59.8586, 17.6389',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En man misshandlades utanför en restaurang på Dragarbrunnsgatan i Uppsala under natten. Vittnen har hörts.'
+        },
+        errors: [
+            { field: 'gps', explanation: 'GPS-fältet innehåller "59.ÅÄÖ, 18.ÖÄÅ" — bokstäver fungerar inte som koordinater! Kartan kan inte tolka detta.' }
+        ],
+        fixExplanation: 'Watchdog-AI identifierade att GPS-fältet innehöll ogiltiga svenska tecken (ÅÄÖ). Genom att läsa texten och identifiera "Dragarbrunnsgatan i Uppsala" slogs korrekta koordinater upp (59.86, 17.64).'
     },
-    perfect: {
-        id: 99905, datetime: new Date().toISOString(),
-        name: 'TestEvent - Perfekt data', type: 'Rån',
-        summary: 'Ett rån begicks mot en butik i centrala Linköping vid middagstid.',
-        description: 'Gärningsmannen maskerad, ca 180cm lång, flydde söderut. Polisen söker vittnen via telefon: 114 14.',
-        location: { name: 'Linköping, Östergötlands län', gps: '58.4108,15.6214' },
-        _testLabel: 'Perfekt data', _testCategory: 'Kontrolltest',
-        _explains: 'Alla fält är korrekta och fullständiga. Bör ge full poäng: 100/100.'
+    {
+        id: 'wrong_region',
+        icon: '🗺️',
+        title: 'Fel stad i platsfältet',
+        subtitle: 'Texten säger Malmö men platsen säger Kiruna',
+        broken: {
+            type: 'Stöld',
+            location: 'Kiruna, Norrbottens län',
+            gps: '67.8558, 20.2253',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En cykelstöld rapporterades vid Triangelns köpcentrum i centrala Malmö. Lås hade klippts med bultklippare.'
+        },
+        fixed: {
+            type: 'Stöld',
+            location: 'Malmö, Skåne län',
+            gps: '55.5953, 13.0017',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En cykelstöld rapporterades vid Triangelns köpcentrum i centrala Malmö. Lås hade klippts med bultklippare.'
+        },
+        errors: [
+            { field: 'location', explanation: 'Platsfältet säger "Kiruna, Norrbottens län" men texten beskriver tydligt "Triangelns köpcentrum i centrala Malmö".' },
+            { field: 'gps', explanation: 'GPS-koordinaterna (67.86, 20.23) pekar på Kiruna i norra Sverige — 150 mil från Malmö.' }
+        ],
+        fixExplanation: 'Watchdog-AI jämförde platsfältet (Kiruna) med sammanfattningen (Malmö). Den insåg att texten refererade "Triangelns köpcentrum i centrala Malmö" och korrigerade både plats och GPS till Malmö, Skåne län (55.60, 13.00).'
     },
-    total_garbage: {
-        id: 99906, datetime: 'inte-ett-datum',
-        name: 'TestEvent - Skräpdata', type: '', summary: '', description: '',
-        location: { name: '', gps: 'abc,xyz' },
-        _testLabel: 'Total skräpdata', _testCategory: 'Stressttest',
-        _explains: 'Alla fält är felaktiga: ogiltigt datum, tom typ, tom text, ogiltiga GPS, ingen plats. Bör ge 0/100.'
+    {
+        id: 'total_chaos',
+        icon: '💀',
+        title: 'Totalt kaos',
+        subtitle: 'Allting är fel samtidigt',
+        broken: {
+            type: '',
+            location: '',
+            gps: 'abc, xyz',
+            datetime: 'inte-ett-datum',
+            summary: ''
+        },
+        fixed: {
+            type: 'Okänd brottstyp',
+            location: 'Plats ej angiven',
+            gps: 'Ej tillgänglig',
+            datetime: new Date().toLocaleString('sv-SE'),
+            summary: 'En incident har rapporterats men saknar fullständig information. Ärendet markeras med låg tillförlitlighet tills polisen uppdaterar rapporten.'
+        },
+        errors: [
+            { field: 'type', explanation: 'Brottstypen är helt tom — vi vet inte ens vad för typ av händelse det gäller.' },
+            { field: 'location', explanation: 'Platsfältet är tomt. Incidenten kan inte kopplas till någon region.' },
+            { field: 'gps', explanation: 'GPS-koordinaterna "abc, xyz" är bokstäver. Kart-systemet kraschar om det försöker tolka detta.' },
+            { field: 'datetime', explanation: '"inte-ett-datum" kan inte tolkas som ett datum. Vi vet inte när händelsen skedde.' },
+            { field: 'summary', explanation: 'Beskrivningen är helt tom. Medborgarna får ingen information alls.' }
+        ],
+        fixExplanation: 'Watchdog-AI hittade 5 av 5 fält trasiga. Datumet sattes till idag, ogiltiga GPS-koordinater flaggades som otillgängliga, brottstypen och platsen markerades som okända, och en bastext genererades. Incidenten markeras med låg tillförlitlighet — den rödmarkeras i dashboarden.'
     }
-};
+];
 
-let sandboxIdCounter = 99900;
+let currentChaosScenario = null;
+let chaosIsFixed = false;
 
-async function injectPreset(key) {
-    const presetSource = SANDBOX_PRESETS[key];
-    if (!presetSource) return;
-
-    // Clone and clean internal fields
-    const preset = { ...presetSource };
-    const testLabel = preset._testLabel;
-    const testCategory = preset._testCategory;
-    const explains = preset._explains;
-    delete preset._testLabel;
-    delete preset._testCategory;
-    delete preset._explains;
-
-    sandboxIdCounter++;
-    preset.id = sandboxIdCounter;
-
-    addQALog('sandbox', `Injicerar testdata: ${testLabel}`);
-
-    try {
-        const res = await fetch(`${API_BASE}/api/test-sandbox/inject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(preset)
-        });
-        const result = await res.json();
-
-        // Pass through _testLabel and _explains to the resulting object so modal can use it
-        result.result._testLabel = testLabel;
-        result.result._explains = explains;
-
-        const score = result.result.qa_integrity.score;
-        const isFlagged = result.result.qa_integrity.isLowConfidence;
-        const reasons = result.result.qa_integrity.reasons || [];
-
-        // Don't add to main incidents — keep QA separate
-        // (it's added on server, but we filter it out in renderIncidents)
-        allIncidents.unshift(result.result);
-
-        // Build result detail for QA results panel
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        const hasGPS = result.result.location && result.result.location.gps && result.result.location.gps !== '0,0';
-        const textLen = ((result.result.summary || '').length + (result.result.description || '').length);
-        const hasLoc = result.result.location && result.result.location.name;
-
-        const lowerSummary = (result.result.summary || '').toLowerCase();
-        const isMetaPost =
-            lowerSummary.includes('frågor från media') ||
-            lowerSummary.includes('ingen presstalesperson i tjänst') ||
-            lowerSummary.includes('ändrade öppettider');
-
-        const gpsOk = hasGPS;
-        const textOk = !isMetaPost && textLen > 15;
-        const textPartial = !isMetaPost && textLen > 0 && textLen <= 15;
-        const locOk = hasLoc;
-        const timeOk = !reasons.some(r => r.includes('future') || r.includes('Invalid'));
-
-        qaTestResults.unshift({
-            name: testLabel, category: testCategory, explains,
-            score, isFlagged, reasons, timeStr,
-            checks: { gpsOk, textOk, textPartial, locOk, timeOk }
-        });
-
-        renderQAResults();
-
-        // Log
-        if (isFlagged) addQALog('flagged', `QA Test: "${testLabel}" → ${score}/100 (FLAGGAD)`);
-        else addQALog('verified', `QA Test: "${testLabel}" → ${score}/100 (OK)`);
-
-        showToast(testLabel, score, isFlagged);
-
-    } catch (err) {
-        addQALog('flagged', `QA Test FEL: ${err.message}`);
-        showToast('FEL', 0, true);
-    }
-}
-
-function renderQAResults() {
-    const container = document.getElementById('qaResultsList');
+function renderChaosScenarios() {
+    const container = document.getElementById('chaosScenarios');
     if (!container) return;
+    container.innerHTML = CHAOS_SCENARIOS.map(s => `
+        <button class="chaos-scenario-btn ${currentChaosScenario && currentChaosScenario.id === s.id ? 'active' : ''}" onclick="chaosSelectScenario('${s.id}')">
+            <span class="chaos-scenario-icon">${s.icon}</span>
+            <div class="chaos-scenario-info">
+                <strong>${escapeHtml(s.title)}</strong>
+                <span>${escapeHtml(s.subtitle)}</span>
+            </div>
+        </button>
+    `).join('');
+}
 
-    if (qaTestResults.length === 0) {
-        container.innerHTML = `<div class="qa-empty-state"><div class="qa-empty-icon">🔬</div><p>Klicka på en testprofil till vänster för att se resultatet här.</p></div>`;
-        return;
+function chaosSelectScenario(id) {
+    const scenario = CHAOS_SCENARIOS.find(s => s.id === id);
+    if (!scenario) return;
+    currentChaosScenario = scenario;
+    chaosIsFixed = false;
+
+    // Show viewer section
+    document.getElementById('chaosViewerSection').style.display = '';
+
+    // Update phase badge
+    const badge = document.getElementById('phaseBadge');
+    badge.className = 'phase-badge phase-broken';
+    badge.textContent = '⚠️ Trasig data inmatad';
+
+    // Fill broken data
+    const b = scenario.broken;
+    document.getElementById('chaosType').textContent = b.type || '(tomt)';
+    document.getElementById('chaosLocation').textContent = b.location || '(tomt)';
+    document.getElementById('chaosGps').textContent = b.gps || '(tomt)';
+    document.getElementById('chaosDatetime').textContent = b.datetime || '(tomt)';
+    document.getElementById('chaosSummary').textContent = b.summary || '(tomt)';
+
+    // Clear all error/fixed classes
+    ['Type', 'Location', 'Gps', 'Datetime', 'Summary'].forEach(f => {
+        const el = document.getElementById('chaosField' + f);
+        el.classList.remove('has-error', 'is-fixed');
+    });
+
+    // Highlight broken fields
+    const fieldMap = { type: 'Type', location: 'Location', gps: 'Gps', datetime: 'Datetime', summary: 'Summary' };
+    scenario.errors.forEach(err => {
+        const el = document.getElementById('chaosField' + fieldMap[err.field]);
+        if (el) el.classList.add('has-error');
+    });
+
+    // Render error explanations
+    const errContainer = document.getElementById('chaosErrors');
+    errContainer.innerHTML = scenario.errors.map(err => `
+        <div class="chaos-error-item">
+            <span class="chaos-error-icon">❌</span>
+            <p>${escapeHtml(err.explanation)}</p>
+        </div>
+    `).join('');
+    errContainer.style.display = '';
+
+    // Show fix button, hide result
+    document.getElementById('chaosActions').style.display = '';
+    document.getElementById('chaosFixBtn').disabled = false;
+    document.getElementById('chaosFixResult').style.display = 'none';
+
+    // Update scenario buttons
+    renderChaosScenarios();
+
+    // Log
+    addQALog('sandbox', `Scenario valt: "${scenario.title}"`);
+
+    // Scroll to viewer
+    document.getElementById('chaosViewerSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function chaosRunFix() {
+    if (!currentChaosScenario || chaosIsFixed) return;
+
+    const btn = document.getElementById('chaosFixBtn');
+    btn.disabled = true;
+    btn.querySelector('strong').textContent = 'Watchdog-AI analyserar...';
+
+    addQALog('info', `Watchdog-AI aktiverad för "${currentChaosScenario.title}"`);
+
+    // Simulate AI "thinking" with a delay
+    await new Promise(r => setTimeout(r, 800));
+
+    const scenario = currentChaosScenario;
+    const fieldMap = { type: 'Type', location: 'Location', gps: 'Gps', datetime: 'Datetime', summary: 'Summary' };
+
+    // Animate each error field one at a time
+    for (let i = 0; i < scenario.errors.length; i++) {
+        const err = scenario.errors[i];
+        const fieldId = fieldMap[err.field];
+        const fieldEl = document.getElementById('chaosField' + fieldId);
+        const valueEl = document.getElementById('chaos' + fieldId);
+
+        // Flash the field
+        fieldEl.classList.add('fixing');
+        await new Promise(r => setTimeout(r, 500));
+
+        // Replace with fixed value
+        const fixedVal = scenario.fixed[err.field];
+        if (fixedVal !== undefined) {
+            valueEl.textContent = fixedVal || '(tomt)';
+        }
+
+        // Swap classes
+        fieldEl.classList.remove('has-error', 'fixing');
+        fieldEl.classList.add('is-fixed');
+
+        await new Promise(r => setTimeout(r, 300));
     }
 
-    container.innerHTML = qaTestResults.map(r => {
-        const scoreClass = r.score >= 75 ? 'score-pass' : r.score >= 50 ? 'score-warn' : 'score-fail';
-        const statusText = r.isFlagged ? 'FLAGGAD' : 'GODKÄND';
+    // Update phase badge
+    const badge = document.getElementById('phaseBadge');
+    badge.className = 'phase-badge phase-fixed';
+    badge.textContent = '✅ Alla fel har reparats';
 
-        return `
-            <div class="qa-result-item">
-                <div class="qa-result-header">
-                    <div class="qa-result-score ${scoreClass}">${r.score}</div>
-                    <span class="qa-result-name">${escapeHtml(r.name)}</span>
-                    <span class="qa-result-time">${r.timeStr}</span>
-                </div>
-                <div class="qa-result-checks">
-                    <div class="qa-result-check"><span class="${r.checks.gpsOk ? 'check-pass' : 'check-fail'}">${r.checks.gpsOk ? '✅' : '❌'}</span> GPS-koordinater (30p)</div>
-                    <div class="qa-result-check"><span class="${r.checks.textOk ? 'check-pass' : r.checks.textPartial ? 'check-warn' : 'check-fail'}">${r.checks.textOk ? '✅' : r.checks.textPartial ? '⚠️' : '❌'}</span> Beskrivning (30p)</div>
-                    <div class="qa-result-check"><span class="${r.checks.timeOk ? 'check-pass' : 'check-fail'}">${r.checks.timeOk ? '✅' : '❌'}</span> Tidsstämpel (20p)</div>
-                    <div class="qa-result-check"><span class="${r.checks.locOk ? 'check-pass' : 'check-fail'}">${r.checks.locOk ? '✅' : '❌'}</span> Platstaggning (20p)</div>
-                </div>
-                ${r.explains ? `<div class="qa-result-reasons"><div class="qa-result-reason" style="color:var(--text-secondary)">💡 ${escapeHtml(r.explains)}</div></div>` : ''}
-                ${r.reasons.length > 0 ? `<div class="qa-result-reasons">${r.reasons.map(reason => `<div class="qa-result-reason">⛔ ${escapeHtml(reason)}</div>`).join('')}</div>` : ''}
-            </div>
-        `;
-    }).join('');
+    // Hide errors, hide button, show result
+    document.getElementById('chaosErrors').style.display = 'none';
+    document.getElementById('chaosActions').style.display = 'none';
+    document.getElementById('chaosFixResult').style.display = '';
+    document.getElementById('chaosFixExplanation').textContent = scenario.fixExplanation;
+
+    chaosIsFixed = true;
+
+    addQALog('verified', `Watchdog-AI fixade ${scenario.errors.length} fel i "${scenario.title}"`);
 }
+
+// Initialize chaos scenarios on page load
+document.addEventListener('DOMContentLoaded', () => {
+    renderChaosScenarios();
+});
 
 // ─── TOAST ──────────────────────────────────
 let toastTimeout = null;
 function showToast(name, score, isFlagged) {
     const toast = document.getElementById('sandboxToast');
+    if (!toast) return;
     document.getElementById('toastIcon').textContent = isFlagged ? '⚠️' : '✅';
     document.getElementById('toastTitle').textContent = name;
     const detail = document.getElementById('toastDetail');
