@@ -320,7 +320,13 @@ function openIncidentModal(inc) {
     document.getElementById('modalTitle').textContent = inc.type || inc.name || 'Incident';
     document.getElementById('modalType').textContent = inc.type || 'Typ okänd';
     document.getElementById('modalLocation').textContent = (inc.location && inc.location.name) || 'Plats okänd';
-    document.getElementById('modalDescription').textContent = inc.summary || inc.description || 'Ingen beskrivning tillgänglig.';
+
+    let descHtml = escapeHtml(inc.summary || inc.description || 'Ingen beskrivning tillgänglig.');
+    if (inc._explains) {
+        descHtml = `<div class="qa-modal-explains"><strong>🧪 QA Test:</strong> ${escapeHtml(inc._explains)}</div>` + descHtml;
+    }
+    document.getElementById('modalDescription').innerHTML = descHtml;
+
     document.getElementById('modalScoreText').textContent = score;
 
     const linkEl = document.getElementById('modalLink');
@@ -736,6 +742,11 @@ async function injectPreset(key) {
             body: JSON.stringify(preset)
         });
         const result = await res.json();
+
+        // Pass through _testLabel and _explains to the resulting object so modal can use it
+        result.result._testLabel = testLabel;
+        result.result._explains = explains;
+
         const score = result.result.qa_integrity.score;
         const isFlagged = result.result.qa_integrity.isLowConfidence;
         const reasons = result.result.qa_integrity.reasons || [];

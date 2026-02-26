@@ -28,7 +28,7 @@ function calculateIntegrityScore(event) {
     if (hasGPS) {
         score += 30;
     } else {
-        reasons.push('Missing GPS coordinates');
+        reasons.push('Saknar helt GPS-koordinater. (Detta gör att incidenten inte kan visas på kartan)');
     }
 
     // 2. Information Value & Description Quality (30pts)
@@ -43,16 +43,16 @@ function calculateIntegrityScore(event) {
         lowerSummary.includes('ändrade öppettider');
 
     if (isMetaPost) {
-        reasons.push('Administrativt meddelande (ej specifik incident)');
+        reasons.push('Administrativt meddelande (Detta är ingen faktisk polisincident utan information från polisen)');
     } else {
         if (textLen > 15) {
             // Korta sammanfattningar är bra så länge de beskriver en konktret incident! (resten finns på URL)
             score += 30;
         } else if (textLen > 0) {
             score += 15;
-            reasons.push('Väldigt kort beskrivning');
+            reasons.push('Kortfattad beskrivning. (Incidenten har så lite text att allmänheten får väldigt lite information)');
         } else {
-            reasons.push('Saknar beskrivning helt');
+            reasons.push('Saknar text och beskrivning helt. (Endast typ av brott är ifyllt)');
         }
     }
 
@@ -63,12 +63,12 @@ function calculateIntegrityScore(event) {
     const eventDate = new Date(dateStr);
     const now = new Date();
     if (isNaN(eventDate.getTime())) {
-        reasons.push('Invalid timestamp format');
+        reasons.push('Ogiltigt format på tidsstämpel (Systemet kunde inte tolka när händelsen skedde)');
     } else if (eventDate > now) {
-        reasons.push('Event date is in the future');
+        reasons.push('Ologiskt datum: Händelsen påstås ha skett i framtiden');
     } else if ((now - eventDate) / (1000 * 60 * 60 * 24) > 30) {
         score += 10;
-        reasons.push('Event is significantly delayed/old');
+        reasons.push('Kraftigt fördröjd rapport (Händelsen publicerades över 30 dagar efter att den skedde)');
     } else {
         score += 20;
     }
@@ -78,7 +78,7 @@ function calculateIntegrityScore(event) {
     if (hasLocationTags) {
         score += 20;
     } else {
-        reasons.push('Missing proper location tags (Län/Kommun)');
+        reasons.push('Saknar geografisk region (Län eller kommun angavs inte, vilket gör regional statistik svår)');
     }
 
     return {
