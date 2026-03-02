@@ -428,7 +428,12 @@ function initMiniMap() {
 }
 
 function initFullMap() {
-    if (fullMap) { updateMapMarkers(fullMap, fullMarkers, mapFilter); fullMap.invalidateSize(); return; }
+    if (fullMap) {
+        updateMapMarkers(fullMap, fullMarkers, mapFilter);
+        setTimeout(() => fullMap.invalidateSize(), 300);
+        return;
+    }
+
     fullMap = L.map('fullMap', { zoomControl: true, attributionControl: false }).setView([62.5, 17.5], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(fullMap);
 
@@ -442,6 +447,7 @@ function initFullMap() {
     fullMap.addLayer(fullMarkers);
 
     updateMapMarkers(fullMap, fullMarkers, mapFilter);
+    setTimeout(() => fullMap.invalidateSize(), 300);
 }
 
 function updateMapMarkers(map, markerLayer, filter) {

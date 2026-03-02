@@ -89,18 +89,94 @@ function calculateIntegrityScore(event) {
 }
 
 /**
+ * Delay execution to respect rate limits
+ */
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Get exact GPS from OpenStreetMap Nominatim, with memory and Firestore cache
+ */
+async function getExactGPS(locationName, originalGPS, inMemoryCache) {
+    if (!locationName) return originalGPS;
+
+    // Rensa upp namnet (t.ex. "Södermalm, Stockholm" -> "Södermalm")
+    const cleanName = locationName.split(',')[0].trim();
+    const query = `${cleanName}, Sweden`;
+
+    // Skapa ett säkert ID för Firestore cache
+    const cacheId = query.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    // 1. Kolla lokal memory-cache från nuvarande loop
+    if (inMemoryCache[cacheId]) {
+        return inMemoryCache[cacheId] === 'NOT_FOUND' ? originalGPS : inMemoryCache[cacheId];
+    }
+
+    try {
+        // 2. Kolla databas-cachen i Firestore
+        const cacheDoc = await db.collection('geocache').doc(cacheId).get();
+        if (cacheDoc.exists) {
+            const cachedGps = cacheDoc.data().gps;
+            inMemoryCache[cacheId] = cachedGps;
+            return cachedGps === 'NOT_FOUND' ? originalGPS : cachedGps;
+        }
+
+        // 3. Hämta från OpenStreetMap (Max 1 request/sekund)
+        console.log(`[Geocoding] Slår upp: ${query}...`);
+        const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+            params: { format: 'json', q: query, limit: 1 },
+            headers: { 'User-Agent': 'TheHonestWatchdog/1.0' }
+        });
+
+        await sleep(1200); // 1.2s delay för att vara snälla mot Nominatim
+
+        let newGps = 'NOT_FOUND';
+        if (res.data && res.data.length > 0) {
+            newGps = `${res.data[0].lat},${res.data[0].lon}`;
+            console.log(`[Geocoding] Hittade: ${newGps}`);
+        } else {
+            console.log(`[Geocoding] Hittade INTE: ${query}`);
+        }
+
+        // Spara till cache (även NOT_FOUND så vi inte spammar felaktiga adresser)
+        inMemoryCache[cacheId] = newGps;
+        await db.collection('geocache').doc(cacheId).set({
+            gps: newGps,
+            query: query,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return newGps === 'NOT_FOUND' ? originalGPS : newGps;
+
+    } catch (err) {
+        console.error(`[Geocoding] Fel vid uppslag av ${query}:`, err.message);
+        return originalGPS;
+    }
+}
+
+/**
  * Helper to enrich and upsert raw events to Firestore
  */
 async function upsertEvents(rawEvents) {
     let upsertCount = 0;
+    const inMemoryCache = {}; // Cache för pågående uppdaterings-loop
+
     for (const event of rawEvents) {
         const integrity = calculateIntegrityScore(event);
         let dateStr = event.datetime || '';
         dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{2}):(\d{2})$/, (_, d, h, m, s, oh, om) => `${d}T${h.padStart(2, '0')}:${m}:${s}${oh}:${om}`);
         const eventTime = new Date(dateStr).getTime() || Date.now();
 
+        // Få exakt GPS i bakgrunden (Hemnet-style) istället för enbart Län-koordinater
+        let exactGps = event.location ? event.location.gps : null;
+        if (event.location && event.location.name) {
+            exactGps = await getExactGPS(event.location.name, event.location.gps, inMemoryCache);
+        }
+
+        const enrichedLocation = event.location ? { ...event.location, gps: exactGps || event.location.gps } : event.location;
+
         const enriched = {
             ...event,
+            location: enrichedLocation,
             qa_integrity: integrity,
             timestamp: eventTime
         };
