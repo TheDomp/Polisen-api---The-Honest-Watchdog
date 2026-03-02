@@ -93,7 +93,7 @@ async function fetchPoliceData() {
         }, 300 + Math.min(allIncidents.length, 100) * 10);
 
         updateStats(allIncidents.length, verifiedCount);
-        initMiniMap();
+        setTimeout(() => initMiniMap(), 100);
         updateCrimeTypes();
         renderIncidents();
         updateScoreDistribution();
@@ -395,19 +395,52 @@ const CRIME_COLORS = {
     'Försvunnen person': '#14b8a6', 'Övrigt': '#6b7280'
 };
 
+function createClusterIcon(cluster) {
+    const count = cluster.getChildCount();
+    let sizeClass = 'cluster-small';
+    if (count > 10) sizeClass = 'cluster-medium';
+    if (count > 30) sizeClass = 'cluster-large';
+
+    return L.divIcon({
+        html: `<div><span>${count}</span></div>`,
+        className: `custom-marker-cluster ${sizeClass}`,
+        iconSize: L.point(40, 40)
+    });
+}
+
 function initMiniMap() {
-    if (miniMap) { updateMapMarkers(miniMap, miniMarkers, 'all'); return; }
+    if (miniMap) { updateMapMarkers(miniMap, miniMarkers, 'all'); miniMap.invalidateSize(); return; }
     miniMap = L.map('miniMap', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false }).setView([62.5, 17.5], 4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(miniMap);
-    miniMarkers = L.layerGroup().addTo(miniMap);
+
+    miniMarkers = L.markerClusterGroup({
+        maxClusterRadius: 25,
+        iconCreateFunction: createClusterIcon,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: false
+    });
+    miniMap.addLayer(miniMarkers);
+
     updateMapMarkers(miniMap, miniMarkers, 'all');
+    // Force Leaflet to recalculate container size so tiles fill the whole area
+    setTimeout(() => miniMap.invalidateSize(), 300);
 }
 
 function initFullMap() {
     if (fullMap) { updateMapMarkers(fullMap, fullMarkers, mapFilter); fullMap.invalidateSize(); return; }
     fullMap = L.map('fullMap', { zoomControl: true, attributionControl: false }).setView([62.5, 17.5], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(fullMap);
-    fullMarkers = L.layerGroup().addTo(fullMap);
+
+    fullMarkers = L.markerClusterGroup({
+        maxClusterRadius: 40,
+        iconCreateFunction: createClusterIcon,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true
+    });
+    fullMap.addLayer(fullMarkers);
+
     updateMapMarkers(fullMap, fullMarkers, mapFilter);
 }
 
