@@ -89,68 +89,79 @@ function calculateIntegrityScore(event) {
 }
 
 /**
- * Delay execution to respect rate limits
+ * Korrekt GPS-koordinater för Sveriges alla Län och vanliga städer i polisens data.
+ * Nominatim-geocodingen ersätts med denna tabell för att undvika felaktig placering
+ * (t.ex. "Stockholms Län" → Gällnö i skärgården).
  */
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const SWEDEN_LOCATIONS = {
+    // ── Alla 21 Län (koordinat = resp. residensstad centrum) ──────────────────
+    'stockholms län': '59.3293,18.0686',  // Stockholm
+    'uppsala län': '59.8594,17.6389',  // Uppsala
+    'södermanlands län': '59.3666,16.5077',  // Eskilstuna
+    'östergötlands län': '58.4109,15.6216',  // Linköping
+    'jönköpings län': '57.7826,14.1618',  // Jönköping
+    'kronobergs län': '56.8777,14.8091',  // Växjö
+    'kalmar län': '56.6616,16.3562',  // Kalmar
+    'gotlands län': '57.6348,18.2948',  // Visby
+    'blekinge län': '56.1612,15.5869',  // Karlskrona
+    'skåne län': '55.6050,13.0038',  // Malmö
+    'hallands län': '56.6745,12.8577',  // Halmstad
+    'västra götalands län': '57.7089,11.9746',  // Göteborg
+    'värmlands län': '59.4022,13.5115',  // Karlstad
+    'örebro län': '59.2741,15.2066',  // Örebro
+    'västmanlands län': '59.6099,16.5448',  // Västerås
+    'dalarnas län': '60.4858,15.4367',  // Falun
+    'gävleborgs län': '60.6749,17.1413',  // Gävle
+    'västernorrlands län': '62.3913,17.3069',  // Härnösand
+    'jämtlands län': '63.1792,14.6357',  // Östersund
+    'västerbottens län': '63.8258,20.2630',  // Umeå
+    'norrbottens län': '65.5848,22.1547',  // Luleå
+
+    // ── Vanliga städer i polisens data ─────────────────────────────────────────
+    'stockholm': '59.3293,18.0686',
+    'göteborg': '57.7089,11.9746',
+    'malmö': '55.6050,13.0038',
+    'uppsala': '59.8594,17.6389',
+    'linköping': '58.4109,15.6216',
+    'örebro': '59.2741,15.2066',
+    'västerås': '59.6099,16.5448',
+    'helsingborg': '56.0465,12.6945',
+    'norrköping': '58.5877,16.1924',
+    'jönköping': '57.7826,14.1618',
+    'umeå': '63.8258,20.2630',
+    'luleå': '65.5848,22.1547',
+    'gävle': '60.6749,17.1413',
+    'borås': '57.7210,12.9401',
+    'eskilstuna': '59.3666,16.5077',
+    'södertälje': '59.1955,17.6253',
+    'karlstad': '59.4022,13.5115',
+    'täby': '59.4439,18.0687',
+    'sundsvall': '62.3908,17.3069',
+    'östersund': '63.1792,14.6357',
+    'halmstad': '56.6745,12.8577',
+    'växjö': '56.8777,14.8091',
+    'falun': '60.4858,15.4367',
+    'skellefteå': '64.7507,20.9528',
+    'karlskrona': '56.1612,15.5869',
+    'kalmar': '56.6616,16.3562',
+    'kristianstad': '56.0294,14.1567',
+    'gotland': '57.6348,18.2948',
+};
 
 /**
- * Get exact GPS from OpenStreetMap Nominatim, with memory and Firestore cache
+ * Slår upp GPS-koordinat från vår tabell. Faller tillbaka på polisens
+ * original-GPS om platsen inte finns i tabellen.
  */
-async function getExactGPS(locationName, originalGPS, inMemoryCache) {
+function lookupGPS(locationName, originalGPS) {
     if (!locationName) return originalGPS;
-
-    // Rensa upp namnet (t.ex. "Södermalm, Stockholm" -> "Södermalm")
-    const cleanName = locationName.split(',')[0].trim();
-    const query = `${cleanName}, Sweden`;
-
-    // Skapa ett säkert ID för Firestore cache
-    const cacheId = query.toLowerCase().replace(/[^a-z0-9]/g, '_');
-
-    // 1. Kolla lokal memory-cache från nuvarande loop
-    if (inMemoryCache[cacheId]) {
-        return inMemoryCache[cacheId] === 'NOT_FOUND' ? originalGPS : inMemoryCache[cacheId];
+    const key = locationName.toLowerCase().trim();
+    // Exakt träff
+    if (SWEDEN_LOCATIONS[key]) return SWEDEN_LOCATIONS[key];
+    // Delträff (t.ex. "Göteborg" matchar "västra götalands län")
+    for (const [k, v] of Object.entries(SWEDEN_LOCATIONS)) {
+        if (key.includes(k) || k.includes(key)) return v;
     }
-
-    try {
-        // 2. Kolla databas-cachen i Firestore
-        const cacheDoc = await db.collection('geocache').doc(cacheId).get();
-        if (cacheDoc.exists) {
-            const cachedGps = cacheDoc.data().gps;
-            inMemoryCache[cacheId] = cachedGps;
-            return cachedGps === 'NOT_FOUND' ? originalGPS : cachedGps;
-        }
-
-        // 3. Hämta från OpenStreetMap (Max 1 request/sekund)
-        console.log(`[Geocoding] Slår upp: ${query}...`);
-        const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-            params: { format: 'json', q: query, limit: 1 },
-            headers: { 'User-Agent': 'TheHonestWatchdog/1.0' }
-        });
-
-        await sleep(1200); // 1.2s delay för att vara snälla mot Nominatim
-
-        let newGps = 'NOT_FOUND';
-        if (res.data && res.data.length > 0) {
-            newGps = `${res.data[0].lat},${res.data[0].lon}`;
-            console.log(`[Geocoding] Hittade: ${newGps}`);
-        } else {
-            console.log(`[Geocoding] Hittade INTE: ${query}`);
-        }
-
-        // Spara till cache (även NOT_FOUND så vi inte spammar felaktiga adresser)
-        inMemoryCache[cacheId] = newGps;
-        await db.collection('geocache').doc(cacheId).set({
-            gps: newGps,
-            query: query,
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        return newGps === 'NOT_FOUND' ? originalGPS : newGps;
-
-    } catch (err) {
-        console.error(`[Geocoding] Fel vid uppslag av ${query}:`, err.message);
-        return originalGPS;
-    }
+    return originalGPS;
 }
 
 /**
@@ -158,7 +169,6 @@ async function getExactGPS(locationName, originalGPS, inMemoryCache) {
  */
 async function upsertEvents(rawEvents) {
     let upsertCount = 0;
-    const inMemoryCache = {}; // Cache för pågående uppdaterings-loop
 
     for (const event of rawEvents) {
         const integrity = calculateIntegrityScore(event);
@@ -166,13 +176,14 @@ async function upsertEvents(rawEvents) {
         dateStr = dateStr.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([+-]\d{2}):(\d{2})$/, (_, d, h, m, s, oh, om) => `${d}T${h.padStart(2, '0')}:${m}:${s}${oh}:${om}`);
         const eventTime = new Date(dateStr).getTime() || Date.now();
 
-        // Få exakt GPS i bakgrunden (Hemnet-style) istället för enbart Län-koordinater
-        let exactGps = event.location ? event.location.gps : null;
-        if (event.location && event.location.name) {
-            exactGps = await getExactGPS(event.location.name, event.location.gps, inMemoryCache);
-        }
-
-        const enrichedLocation = event.location ? { ...event.location, gps: exactGps || event.location.gps } : event.location;
+        // Slå upp exakt GPS från vår svenska koordinattabell
+        const exactGps = lookupGPS(
+            event.location ? event.location.name : null,
+            event.location ? event.location.gps : null
+        );
+        const enrichedLocation = event.location
+            ? { ...event.location, gps: exactGps || event.location.gps }
+            : event.location;
 
         const enriched = {
             ...event,
