@@ -438,9 +438,10 @@ function initFullMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(fullMap);
 
     fullMarkers = L.markerClusterGroup({
-        maxClusterRadius: 40,
+        maxClusterRadius: 30,
         iconCreateFunction: createClusterIcon,
-        spiderfyOnMaxZoom: true,
+        spiderfyOnMaxZoom: false,
+        disableClusteringAtZoom: 13,
         showCoverageOnHover: false,
         zoomToBoundsOnClick: true
     });
